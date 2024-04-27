@@ -572,6 +572,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "gemini-bot"
+version = "0.1.0"
+dependencies = [
+ "reqwest 0.12.4",
+ "rocket",
+ "russenger",
+ "serde",
+]
+
+[[package]]
 name = "generator"
 version = "0.7.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1113,16 +1123,6 @@ dependencies = [
  "security-framework",
  "security-framework-sys",
  "tempfile",
-]
-
-[[package]]
-name = "newbot"
-version = "0.1.0"
-dependencies = [
- "reqwest 0.12.4",
- "rocket",
- "russenger",
- "serde",
 ]
 
 [[package]]

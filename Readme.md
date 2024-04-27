@@ -2,7 +2,7 @@
 
 ## Who to use
 
-### Pls check the `.env` file and `Rocket.toml` file before
+### Pls check the `.env`
 
 ### Build
 * run `cargo build`
