@@ -37,9 +37,7 @@ async fn ask_gemini(text: String) -> Result<Response, reqwest::Error> {
             "contents": [
                 Content {
                     role: "user".to_owned(),
-                    parts: vec![Part {
-                        text
-                    }]
+                    parts: vec![ Part { text } ]
                 }
             ]
         }
