@@ -1,3 +1,4 @@
+use rocket::serde::json::json;
 use russenger::dotenv;
 use russenger::prelude::*;
 use serde::Deserialize;
@@ -6,41 +7,66 @@ use serde::Serialize;
 const URL: &str =
     "https://generativelanguage.googleapis.com/v1/models/gemini-pro:generateContent?key=";
 
+/*
+{
+    "contents":[
+        {
+            "role": "user",
+             "parts":[
+                 {"text": "write a code factoriel in python"}
+             ]
+        }
+    ]
+}
+*/
+
 #[derive(Serialize, Deserialize, Clone)]
 struct Part {
     text: String,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
-struct Body {
+struct Content {
     role: String,
     parts: Vec<Part>,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
 struct Candidate {
-    content: Body,
+    content: Content,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
 struct Response {
-    canditates: Vec<Candidate>,
+    candidates: Vec<Candidate>,
 }
 
 async fn ask_gemini(text: String) -> Result<Response, reqwest::Error> {
     dotenv().ok();
-    let api_key = std::env::var("API-KEY").expect("pls check your env file");
+    let api_key = std::env::var("API_KEY").expect("pls check your env file");
     let api_url = format!("{URL}{api_key}");
-    let body = Body {
-        role: "user".to_owned(),
-        parts: vec![Part { text }],
-    };
+    let body = json!(
+        {
+            "contents": [
+                Content {
+                    role: "user".to_owned(),
+                    parts: vec![Part {
+                        text
+                    }]
+                }
+            ]
+        }
+    );
     let response = reqwest::Client::new()
         .post(api_url)
         .json(&body)
         .send()
         .await?;
-    Ok(response.json().await.unwrap())
+
+    match response.json().await {
+        Ok(response) => Ok(response),
+        Err(err) => panic!("{err:?}"),
+    }
 }
 
 create_action!(Main, |res: Res, req: Req| async move {
@@ -49,7 +75,7 @@ create_action!(Main, |res: Res, req: Req| async move {
         &req.user,
         vec![Button::Postback {
             title: "AskGemini",
-            payload: Payload::new(AskGemini, None),
+            payload: Payload::new(HelloWorld, None),
         }],
     ))
     .await;
@@ -65,13 +91,12 @@ create_action!(AskGemini, |res: Res, req: Req| async move {
     let text: String = req.data.get_value();
     match ask_gemini(text).await {
         Ok(response) => {
-            for part in response.canditates[0].content.parts.clone() {
+            for part in response.candidates[0].content.parts.clone() {
                 res.send(TextModel::new(&req.user, &part.text)).await;
             }
         }
-        Err(_) => {
-            res.send(TextModel::new(&req.user, "Something is wrong with api"))
-                .await;
+        Err(err) => {
+            res.send(TextModel::new(&req.user, &err.to_string())).await;
         }
     };
 });
