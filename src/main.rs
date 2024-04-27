@@ -7,19 +7,6 @@ use serde::Serialize;
 const URL: &str =
     "https://generativelanguage.googleapis.com/v1/models/gemini-pro:generateContent?key=";
 
-/*
-{
-    "contents":[
-        {
-            "role": "user",
-             "parts":[
-                 {"text": "write a code factoriel in python"}
-             ]
-        }
-    ]
-}
-*/
-
 #[derive(Serialize, Deserialize, Clone)]
 struct Part {
     text: String,
@@ -82,7 +69,7 @@ create_action!(Main, |res: Res, req: Req| async move {
 });
 
 create_action!(HelloWorld, |res: Res, req: Req| async move {
-    let text = "Hello, I'm Gemini, you can ask me anything";
+    let text = "Hello, I'm Gemini";
     res.send(TextModel::new(&req.user, text)).await;
     req.query.set_action(&req.user, AskGemini).await;
 });
