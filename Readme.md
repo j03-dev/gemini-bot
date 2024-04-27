@@ -1,4 +1,4 @@
-# newbot
+# Gemini bot
 
 ## Who to use
 
