@@ -1,5 +1,3 @@
-use rocket::serde::json::json;
-use russenger::dotenv;
 use russenger::prelude::*;
 use serde::Deserialize;
 use serde::Serialize;
@@ -28,20 +26,22 @@ struct Response {
     candidates: Vec<Candidate>,
 }
 
+#[derive(Serialize, Deserialize, Clone)]
+struct Body {
+    contents: Vec<Content>,
+}
+
 async fn ask_gemini(text: String) -> Result<Response, reqwest::Error> {
-    dotenv().ok();
     let api_key = std::env::var("API_KEY").expect("pls check your env file");
     let api_url = format!("{URL}{api_key}");
-    let body = json!(
-        {
-            "contents": [
-                Content {
-                    role: "user".to_owned(),
-                    parts: vec![ Part { text } ]
-                }
-            ]
-        }
-    );
+    let body = Body {
+        contents: [Content {
+            role: "user".to_owned(),
+            parts: vec![Part { text }],
+        }]
+        .to_vec(),
+    };
+
     let response = reqwest::Client::new()
         .post(api_url)
         .json(&body)
@@ -54,36 +54,54 @@ async fn ask_gemini(text: String) -> Result<Response, reqwest::Error> {
     }
 }
 
-create_action!(Main, |res: Res, req: Req| async move {
-    res.send(GetStarted::new(Payload::default())).await;
-    res.send(PersistentMenu::new(
+async fn index(res: Res, req: Req) -> Result<()> {
+    res.send(GetStartedButtonModel::new(Payload::default()))
+        .await?;
+    res.send(PersistentMenuModel::new(
         &req.user,
-        vec![Button::Postback {
+        [Button::Postback {
             title: "AskGemini",
-            payload: Payload::new(HelloWorld, None),
+            payload: Payload::new("/hello_world", None),
         }],
     ))
-    .await;
-});
+    .await?;
+    Ok(())
+}
 
-create_action!(HelloWorld, |res: Res, req: Req| async move {
+async fn hello_world(res: Res, req: Req) -> Result<()> {
     let text = "Hello, I'm Gemini";
-    res.send(TextModel::new(&req.user, text)).await;
-    req.query.set_action(&req.user, AskGemini).await;
-});
+    res.send(TextModel::new(&req.user, text)).await?;
+    res.redirect("/gemini").await?;
+    Ok(())
+}
 
-create_action!(AskGemini, |res: Res, req: Req| async move {
-    let text: String = req.data.get_value();
+async fn gemini(res: Res, req: Req) -> Result<()> {
+    let text: String = req.data.get_value()?;
     match ask_gemini(text).await {
         Ok(response) => {
             for part in response.candidates[0].content.parts.clone() {
-                res.send(TextModel::new(&req.user, &part.text)).await;
+                res.send(TextModel::new(&req.user, &part.text)).await?;
             }
         }
         Err(err) => {
-            res.send(TextModel::new(&req.user, &err.to_string())).await;
+            res.send(TextModel::new(&req.user, &err.to_string()))
+                .await?;
         }
     };
-});
+    Ok(())
+}
 
-russenger_app!(Main, HelloWorld, AskGemini);
+#[tokio::main]
+async fn main() -> Result<()> {
+    App::init()
+        .await?
+        .attach(
+            Router::new()
+                .add("/", index)
+                .add("/hello_world", hello_world)
+                .add("/gemini", gemini),
+        )
+        .launch()
+        .await?;
+    Ok(())
+}
