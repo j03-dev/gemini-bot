@@ -77,17 +77,10 @@ async fn hello_world(res: Res, req: Req) -> Result<()> {
 
 async fn gemini(res: Res, req: Req) -> Result<()> {
     let text: String = req.data.get_value()?;
-    match ask_gemini(text).await {
-        Ok(response) => {
-            for part in response.candidates[0].content.parts.clone() {
-                res.send(TextModel::new(&req.user, &part.text)).await?;
-            }
-        }
-        Err(err) => {
-            res.send(TextModel::new(&req.user, &err.to_string()))
-                .await?;
-        }
-    };
+    let response = ask_gemini(text).await?;
+    for part in response.candidates[0].content.parts.clone() {
+        res.send(TextModel::new(&req.user, &part.text)).await?;
+    }
     Ok(())
 }
 
